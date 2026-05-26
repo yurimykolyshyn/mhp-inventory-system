@@ -145,36 +145,26 @@ const AuditView: React.FC<{
 
   const handleQRScan = (raw: string) => {
     setShowQR(false);
-    // QR може містити кілька кодів: "ЦБ30025821-ЦБ30129228" або просто "ЦБ30025821"
-    const codes = raw.match(/ЦБ\d+/g) ?? (raw.trim() ? [raw.trim()] : []);
-    if (codes.length === 0) { setQrError(`Не вдалося розпізнати код: "${raw}"`); return; }
+    // Формат QR: "ЦБ[МОЛ]-ЦБ[обладнання]" — беремо останній ЦБ-код (код обладнання)
+    // Також підтримується просто "ЦБ[обладнання]"
+    const parts = raw.match(/ЦБ\d+/g) ?? [];
+    const equipmentCode = parts.length >= 2 ? parts[parts.length - 1] : parts[0] ?? raw.trim();
 
-    let found = 0, alreadyDone = 0;
-    let lastUpdated = audit;
+    if (!equipmentCode) { setQrError(`Не вдалося розпізнати код: "${raw}"`); return; }
 
-    for (const code of codes) {
-      const item = lastUpdated.items.find(i => i.equipmentCode === code);
-      if (!item) continue;
-      if (item.isConfirmed) { alreadyDone++; continue; }
-      const updated: InventoryAudit = {
-        ...lastUpdated,
-        items: lastUpdated.items.map(i => i.id === item.id
-          ? { ...i, isConfirmed: true, confirmMethod: 'qr', confirmedBy: user.name, confirmedAt: new Date().toISOString() }
-          : i),
-      };
-      Storage.saveAudit(updated);
-      onUpdate(updated);
-      lastUpdated = updated;
-      found++;
-    }
+    const item = audit.items.find(i => i.equipmentCode === equipmentCode);
+    if (!item) { setQrError(`Обладнання не знайдено в аудиті: "${equipmentCode}"`); return; }
+    if (item.isConfirmed) { showToast(`⚠ Вже підтверджено: ${equipmentCode}`); return; }
 
-    if (found > 0) {
-      showToast(`✓ QR: підтверджено ${found} позиц${found === 1 ? 'ію' : 'ії'}`);
-    } else if (alreadyDone > 0) {
-      showToast(`⚠ Вже підтверджено раніше`);
-    } else {
-      setQrError(`Коди з QR не знайдено в аудиті: ${codes.join(', ')}`);
-    }
+    const updated: InventoryAudit = {
+      ...audit,
+      items: audit.items.map(i => i.id === item.id
+        ? { ...i, isConfirmed: true, confirmMethod: 'qr', confirmedBy: user.name, confirmedAt: new Date().toISOString() }
+        : i),
+    };
+    Storage.saveAudit(updated);
+    onUpdate(updated);
+    showToast(`✓ ${equipmentCode} підтверджено`);
   };
 
   return (
