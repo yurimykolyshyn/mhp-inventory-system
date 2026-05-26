@@ -147,7 +147,7 @@ const AuditView: React.FC<{
     setShowQR(false);
     // Формат QR: "ЦБ[МОЛ]-ЦБ[обладнання]" — беремо останній ЦБ-код (код обладнання)
     // Також підтримується просто "ЦБ[обладнання]"
-    const parts = raw.match(/ЦБ\d+/g) ?? [];
+    const parts = raw.match(/ЦБ-?\d+/g) ?? [];
     const equipmentCode = parts.length >= 2 ? parts[parts.length - 1] : parts[0] ?? raw.trim();
 
     if (!equipmentCode) { setQrError(`Не вдалося розпізнати код: "${raw}"`); return; }
