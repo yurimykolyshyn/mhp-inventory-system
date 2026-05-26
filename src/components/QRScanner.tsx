@@ -21,16 +21,21 @@ const QRScanner: React.FC<Props> = ({ onScan, onClose }) => {
 
   useEffect(() => { start(); return stop; }, []);
 
+  // state flips to 'scanning' → React mounts the video element → this effect attaches the stream
+  useEffect(() => {
+    if (state !== 'scanning' || !streamRef.current || !videoRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    videoRef.current.play().catch(() => {});
+    rafRef.current = requestAnimationFrame(tick);
+  }, [state]);
+
   const start = async () => {
+    scanned.current = false;
+    setState('loading');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setState('scanning');
-        rafRef.current = requestAnimationFrame(tick);
-      }
+      setState('scanning'); // video element mounts → useEffect above fires
     } catch { setState('error'); }
   };
 
@@ -91,7 +96,7 @@ const QRScanner: React.FC<Props> = ({ onScan, onClose }) => {
           </div>
           <div className="flex gap-3">
             {state === 'error' && (
-              <button onClick={() => { setState('loading'); start(); }}
+              <button onClick={() => start()}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border-2 border-neutral-200 text-neutral-600 hover:bg-neutral-50">
                 <CameraIcon className="w-4 h-4" /> Спробувати знову
               </button>
