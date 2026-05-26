@@ -143,13 +143,38 @@ const AuditView: React.FC<{
     onUpdate(updated);
   };
 
-  const handleQRScan = (code: string) => {
+  const handleQRScan = (raw: string) => {
     setShowQR(false);
-    const item = audit.items.find(i => i.equipmentCode === code);
-    if (!item) { setQrError(`Код "${code}" не знайдено в аудиті`); return; }
-    if (item.isConfirmed) { showToast(`⚠ Вже підтверджено: ${code}`); return; }
-    confirm(item, 'qr');
-    showToast(`✓ QR: ${code} підтверджено`);
+    // QR може містити кілька кодів: "ЦБ30025821-ЦБ30129228" або просто "ЦБ30025821"
+    const codes = raw.match(/ЦБ\d+/g) ?? (raw.trim() ? [raw.trim()] : []);
+    if (codes.length === 0) { setQrError(`Не вдалося розпізнати код: "${raw}"`); return; }
+
+    let found = 0, alreadyDone = 0;
+    let lastUpdated = audit;
+
+    for (const code of codes) {
+      const item = lastUpdated.items.find(i => i.equipmentCode === code);
+      if (!item) continue;
+      if (item.isConfirmed) { alreadyDone++; continue; }
+      const updated: InventoryAudit = {
+        ...lastUpdated,
+        items: lastUpdated.items.map(i => i.id === item.id
+          ? { ...i, isConfirmed: true, confirmMethod: 'qr', confirmedBy: user.name, confirmedAt: new Date().toISOString() }
+          : i),
+      };
+      Storage.saveAudit(updated);
+      onUpdate(updated);
+      lastUpdated = updated;
+      found++;
+    }
+
+    if (found > 0) {
+      showToast(`✓ QR: підтверджено ${found} позиц${found === 1 ? 'ію' : 'ії'}`);
+    } else if (alreadyDone > 0) {
+      showToast(`⚠ Вже підтверджено раніше`);
+    } else {
+      setQrError(`Коди з QR не знайдено в аудиті: ${codes.join(', ')}`);
+    }
   };
 
   return (
