@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --port 5176 --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "vite build && node node_modules/gh-pages/bin/gh-pages.js -d dist -b gh-pages"
   },
   "dependencies": {
     "jsqr": "^1.4.0",
@@ -20,6 +21,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
+    "gh-pages": "^6.3.0",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.8.2",
     "vite": "^5.4.21"
